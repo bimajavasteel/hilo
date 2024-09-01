@@ -481,6 +481,10 @@ class GUI(tk.Tk):
         row += top_border_delta
         self.static_widget['3'] = GE.Separator_x(self.layer['parameters_frame'], 0, row)
         row += bottom_border_delta
+        
+        # 在适当的位置添加新的AutoRotateSwitch控件
+        self.widget['AutoRotateSwitch'] = GE.Switch2(self.layer['parameters_frame'], 'AutoRotateSwitch', 'Auto Rotate', 3, self.update_data, 'parameter', 398, 20, 1, row)
+        row += switch_delta
 
         # Orientation
         self.widget['OrientSwitch'] = GE.Switch2(self.layer['parameters_frame'], 'OrientSwitch', 'Orientation', 3, self.update_data, 'parameter', 398, 20, 1, row)

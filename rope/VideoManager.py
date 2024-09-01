@@ -1,3 +1,4 @@
+import math
 import os
 import cv2
 import tkinter as tk
@@ -506,106 +507,260 @@ class VideoManager():
 
     # @profile
     def swap_video(self, target_image, frame_number, use_markers):
-        # Grab a local copy of the parameters to prevent threading issues
+        # 获取参数的本地副本以防止线程问题
         parameters = self.parameters.copy()
         control = self.control.copy()
         
-        # Find out if the frame is in a marker zone and copy the parameters if true
+        # 检查帧是否在标记区域内,如果是则复制参数
         if self.markers and use_markers:
-            temp=[]
+            temp = []
             for i in range(len(self.markers)):
                 temp.append(self.markers[i]['frame'])
             idx = bisect.bisect(temp, frame_number)
-            
             parameters = self.markers[idx-1]['parameters'].copy()
         
-        # Load frame into VRAM
+        # 将帧加载到VRAM
         img = torch.from_numpy(target_image.astype('uint8')).to('cuda') #HxWxc
         img = img.permute(2,0,1)#cxHxW        
         
-        #Scale up frame if it is smaller than 512
+        # 如果帧小于512,则放大
         img_x = img.size()[2]
         img_y = img.size()[1]
         
         if img_x<512 and img_y<512:
-            # if x is smaller, set x to 512
             if img_x <= img_y:
                 tscale = v2.Resize((int(512*img_y/img_x), 512), antialias=True)
             else:
                 tscale = v2.Resize((512, int(512*img_x/img_y)), antialias=True)
-
             img = tscale(img)
-            
         elif img_x<512:
             tscale = v2.Resize((int(512*img_y/img_x), 512), antialias=True)
             img = tscale(img)
-        
         elif img_y<512:
             tscale = v2.Resize((512, int(512*img_x/img_y)), antialias=True)
             img = tscale(img)    
 
-        # Rotate the frame
-        if parameters['OrientSwitch']:
-            img = v2.functional.rotate(img, angle=parameters['OrientSlider'], interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+        # # 自动旋转功能
+        # if parameters.get('AutoRotateSwitch', True):  # 假设您添加了一个新的AutoRotateSwitch参数
+        #     for rotation in range(4):  # 0°, 90°, 180°, 270°
+        #         if rotation > 0:
+        #             img = v2.functional.rotate(img, angle=90, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                
+        #         # 检测人脸
+        #         kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                
+        #         if len(kpss) > 0:  # 如果检测到人脸,跳出循环
+        #             break
+        # else:
+        #     # 原有的旋转功能
+        #     if parameters['OrientSwitch']:
+        #         img = v2.functional.rotate(img, angle=parameters['OrientSlider'], interpolation=v2.InterpolationMode.BILINEAR, expand=True)
 
-        # Find all faces in frame and return a list of 5-pt kpss
-        kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
-        # Get embeddings for all faces found in the fram
+        #     # 检测人脸
+        #     kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+        
+        # 自动旋转功能2
+        if parameters.get('AutoRotateSwitch', True):  # 假设您添加了一个新的AutoRotateSwitch参数
+            rotation2 = 0
+            rotation3 = 0
+            face_angle = 0
+            offset_angle = 0
+            isCorrectFace = False
+            for rotation in range(4):  # 0°, 90°, 180°, 270°
+                print("开始第",rotation,"次检测")
+                if rotation > 0:
+                    img = v2.functional.rotate(img, angle=90, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                    rotation3 = rotation*90
+                # 检测人脸
+                kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                
+                if len(kpss) > 0:  # 如果检测到人脸,跳出循环
+                    print("检测到人脸")
+                    # 如果有人脸，判断这个人脸是不是目标人脸。
+                    for face_kps in kpss:# 这里face_kps指的是视频中的人脸。
+                        # 获取视频中的人脸的嵌入
+                        face_emb, _ = self.func_w_test('recognize',  self.models.run_recognize, img, face_kps)
+                        # 计算视频中的人脸的嵌入与目标人脸的嵌入的相似度
+                        sim = self.findCosineDistance(face_emb, self.found_faces[0]["Embedding"])
+                        if sim >= float(parameters["ThresholdSlider"]):
+                            print("找到了")
+                            print("当前旋转的角度：", rotation)
+                            
+                            
+                            
+                            # # 计算当前人脸的角度，通过眼睛和鼻子的相对位置
+                            # # print("face_kps:", face_kps)
+                            # # 获取左眼、右眼和鼻子的坐标
+                            # left_eye = face_kps[0]
+                            # right_eye = face_kps[1]
+                            # nose = face_kps[2]
+
+                            # # 计算眼睛中心点
+                            # eye_center = (left_eye + right_eye) / 2
+
+                            # # 计算眼睛中心到鼻子的向量
+                            # eye_to_nose = nose - eye_center
+
+                            # # 计算人脸的角度
+                            # face_angle = math.atan2(eye_to_nose[1], eye_to_nose[0])
+                            # face_angle = -math.degrees(face_angle)
+                            
+                            
+                            # 计算当前人脸的角度，通过眼睛和嘴巴的相对位置。
+                            left_eye = face_kps[0]
+                            right_eye = face_kps[1]
+                            mouth_center = (face_kps[3]+face_kps[4])/2
+                            eye_center = (left_eye + right_eye) / 2
+                            eye_to_mouth = mouth_center - eye_center
+                            face_angle = math.atan2(eye_to_mouth[1], eye_to_mouth[0])
+                            face_angle = -math.degrees(face_angle)
+
+
+                            
+                            
+                            print("当前人脸face_angle:", face_angle)
+                            if(rotation==0 or rotation==2):
+                                print("检测到0，2了")
+                                # 修正角度 
+                                offset_angle = face_angle - rotation*90+90
+                                #计算offset_angle接近的整数
+                                offset_angle = -round(offset_angle/90)*90
+                            if( rotation==3):
+                                print("检测到3了")
+                                # 修正角度 
+                                offset_angle = face_angle - rotation*90-90
+                                #计算offset_angle接近的整数
+                                offset_angle = round(offset_angle/90)*90
+                                img = v2.functional.rotate(img, angle=-90, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                            if(rotation==1):
+                                # 修正角度 
+                                offset_angle = face_angle - rotation*90-90
+                                #计算offset_angle接近的整数
+                                offset_angle = round(offset_angle/90)*90
+                                
+                            print("修正后的角度：", offset_angle) 
+                            # 先转回来      
+                            img = v2.functional.rotate(img, angle=-rotation3, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                            # 再转回去
+                            img = v2.functional.rotate(img, angle=offset_angle, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                            
+                            
+                            # img = v2.functional.rotate(img, angle=-rotation2, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                            
+                            kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                            if len(kpss) > 0:
+                                print("第二次检测到人脸")
+                                if( rotation==3):
+                                    img = v2.functional.rotate(img, angle=-offset_angle, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                                    kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                                    offset_angle = rotation3
+                                isCorrectFace = True
+                            else:
+                                print("第二次没有检测到人脸！！！！！")
+                                # 再转回来
+                                if( rotation==3):
+                                    img = v2.functional.rotate(img, angle=-offset_angle, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                                    kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                                    offset_angle = rotation3
+                                else:
+                                    img = v2.functional.rotate(img, angle=rotation3, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                                    img = v2.functional.rotate(img, angle=-offset_angle, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                                    kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+                                    offset_angle = rotation3
+                                    isCorrectFace = True
+                            break
+                        else:
+                            print("检测到人脸但是sim值小于阈值")
+                            offset_angle = rotation3
+                            continue# 继续下一次循环
+                    if isCorrectFace:
+                        break
+                else:
+                    print("这次没有检测到人脸")
+                    offset_angle = 270
+                    continue
+        else:
+            # 原有的旋转功能
+            if parameters['OrientSwitch']:
+                img = v2.functional.rotate(img, angle=parameters['OrientSlider'], interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+            # 检测人脸
+            kpss = self.func_w_test("detect", self.models.run_detect, img, parameters['DetectTypeTextSel'], max_num=20, score=parameters['DetectScoreSlider']/100.0)
+        
+
+        
+        # 获取所有检测到的人脸的嵌入
         ret = []
         for face_kps in kpss:
             face_emb, _ = self.func_w_test('recognize',  self.models.run_recognize, img, face_kps)
             ret.append([face_kps, face_emb])
         
-        if ret:
-            # Loop through target faces to see if they match our found face embeddings
+        if len(ret) > 0:
+            print("ret>0")
+            # 遍历目标人脸,查看它们是否与我们找到的人脸嵌入匹配
             for fface in ret:
                 for found_face in self.found_faces:
-                    # sim between face in video and already found face
+                    # 视频中的人脸和已找到的人脸之间的相似度
                     sim = self.findCosineDistance(fface[1], found_face["Embedding"])
-                    # if the face[i] in the frame matches afound face[j] AND the found face is active (not []) 
+                    # 如果帧中的人脸[i]匹配已找到的人脸[j],并且找到的人脸是活跃的(不是[])
                     if sim>=float(parameters["ThresholdSlider"]) and found_face["SourceFaceAssignments"]:
                         s_e = found_face["AssignedEmbedding"]
-                        # s_e = found_face['ptrdata']
                         img = self.func_w_test("swap_video", self.swap_core, img, fface[0], s_e, parameters, control)
-                        # img = img.permute(2,0,1)
-                    
+            
             img = img.permute(1,2,0)
-            if not control['MaskViewButton'] and parameters['OrientSwitch']:
-                img = img.permute(2,0,1)
-                img = transforms.functional.rotate(img, angle=-parameters['OrientSlider'], expand=True)
-                img = img.permute(1,2,0)
-
+            # 如果mask 
+            if not control['MaskViewButton']:
+                # img = img.permute(2,0,1)
+                # if parameters['OrientSwitch']:
+                #     img = transforms.functional.rotate(img, angle=-parameters['OrientSlider'], expand=True)
+                # elif parameters.get('AutoRotateSwitch', False):
+                #     img = transforms.functional.rotate(img, angle=-90*rotation, expand=True)
+                # img = img.permute(1,2,0)
+                if parameters.get('OrientSwitch', True): 
+                    print("aaa")
+                    img = img.permute(2,0,1)
+                    img = transforms.functional.rotate(img, angle=-parameters['OrientSlider'], expand=True)
+                    img = img.permute(1,2,0)
+                if parameters.get('AutoRotateSwitch', True): 
+                    # print("bbb")
+                    img = img.permute(2,0,1)
+                    # img = transforms.functional.rotate(img, angle=- rotation3+rotation2, expand=True)#完全不对
+                    # img = transforms.functional.rotate(img, angle=- rotation3, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                    # img = transforms.functional.rotate(img, angle=-face_angle - 90, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                    img = transforms.functional.rotate(img, angle=-offset_angle, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                    img = img.permute(1,2,0)
         else:
+            print("ret=0")
             img = img.permute(1,2,0)
-            if parameters['OrientSwitch']:
+            # if parameters['OrientSwitch'] or parameters.get('AutoRotateSwitch', False):
+            if parameters['OrientSwitch'] :
+                print("ccc")
                 img = img.permute(2,0,1)
-                img = v2.functional.rotate(img, angle=-parameters['OrientSlider'], interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                if parameters['OrientSwitch']:
+                    print("ddd")
+                    img = v2.functional.rotate(img, angle=-parameters['OrientSlider'], interpolation=v2.InterpolationMode.BILINEAR, expand=True)
+                # elif parameters.get('AutoRotateSwitch', False):
+                #     img = v2.functional.rotate(img, angle=-90*rotation, interpolation=v2.InterpolationMode.BILINEAR, expand=True)
                 img = img.permute(1,2,0)
-        
+            if parameters.get('AutoRotateSwitch', True):
+                print("eee")
+                img = img.permute(2,0,1)
+                # img = transforms.functional.rotate(img, angle=-90*rotation, expand=True)#完全不对
+                # img = transforms.functional.rotate(img, angle=- rotation3, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                # img = transforms.functional.rotate(img, angle=-face_angle - 90, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                img = transforms.functional.rotate(img, angle=-offset_angle, expand=True)#差一点对了，图片会转到“头朝上”的位置
+                img = img.permute(1,2,0)
         if self.perf_test:
             print('------------------------')  
         
-        # Unscale small videos
+        # 缩小小视频
         if img_x <512 or img_y < 512:
             tscale = v2.Resize((img_y, img_x), antialias=True)
             img = img.permute(2,0,1)
             img = tscale(img)
             img = img.permute(1,2,0)
             
-
         img = img.cpu().numpy()  
 
-        # if ret:
-        #
-        #     for kpoint in ret[0][0]:
-        #         for i in range(-1, 1):
-        #             for j in range(-1, 1):
-        #
-        #                 img[int(kpoint[1])+i][int(kpoint[0])+j][0] = 255
-        #                 img[int(kpoint[1])+i][int(kpoint[0])+j][1] = 255
-        #                 img[int(kpoint[1])+i][int(kpoint[0])+j][2] = 255
-
-        
         return img.astype(np.uint8)
 
     def findCosineDistance(self, vector1, vector2):

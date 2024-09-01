@@ -1,6 +1,15 @@
 DEFAULT_DATA = {
 # Buttons
 'AddMarkerButtonDisplay':           'icon',
+'AutoRotateSwitchState': False,  # 或者 True,取决于你希望的默认状态
+'AutoRotateSwitchInfoText': '自动旋转图像以检测人脸',  # 添加一个信息文本
+'AutoRotateSwitchState': False,
+'AutoRotateSwitchInfoText': '自动旋转图像以检测人脸',
+'AutoRotateSwitchIconOn': 'path/to/icon_on.png',
+'AutoRotateSwitchIconOff': 'path/to/icon_off.png',
+'AutoRotateSwitchIconHover': 'path/to/icon_hover.png',
+'AutoRotateSwitchDisplay': 'both',  # 或 'icon' 或 'text'
+'AutoRotateSwitchText': 'Auto Rotate',
 'AddMarkerButtonIconHover':            './rope/media/add_marker_hover.png',    
 'AddMarkerButtonIconOff':              './rope/media/add_marker_off.png',
 'AddMarkerButtonIconOn':               './rope/media/add_marker_off.png',
