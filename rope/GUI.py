@@ -1288,8 +1288,10 @@ class GUI(tk.Tk):
             # Reselect Target Image
             # try:
             self.find_faces()
-            self.target_faces[0]["ButtonState"] = True
-            self.target_faces[0]["TKButton"].config(style.media_button_on_3)
+
+            if len(self.target_faces) != 0:
+                self.target_faces[0]["ButtonState"] = True
+                self.target_faces[0]["TKButton"].config(style.media_button_on_3)
 
             # Reselect Source images
             self.select_input_faces('auto', '')
@@ -1808,8 +1810,8 @@ class GUI(tk.Tk):
     def save_image(self):
         filename =  self.media_file_name[0]+"_"+str(time.time())[:10]
         filename = os.path.join(self.json_dict["saved videos"], filename)
-        cv2.imwrite(filename+'.png', cv2.cvtColor(self.video_image, cv2.COLOR_BGR2RGB))
-        print('Image saved as:', filename+'.png')
+        cv2.imwrite(filename+'.jpg', cv2.cvtColor(self.video_image, cv2.COLOR_BGR2RGB))
+        print('Image saved as:', filename+'.jpg')
    
     def clear_mem(self):
         self.widget['RestorerSwitch'].set(False)
