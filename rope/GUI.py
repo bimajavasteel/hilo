@@ -182,7 +182,7 @@ class GUI(tk.Tk):
 
       # Input Videos
         # Button Frame
-        frame = tk.Frame(self.layer['InputVideoFrame'], style.canvas_frame_label_2, height = 60)
+        frame = tk.Frame(self.layer['InputVideoFrame'], style.canvas_frame_label_2, height = 80)
         frame.grid(row=0, column=0, columnspan = 3, sticky='NEWS', padx=0, pady=0)
 
         # Buttons
@@ -201,6 +201,7 @@ class GUI(tk.Tk):
             40
         )
         self.input_videos_text = GE.Text(frame, '', 2, 10, 20, 190, 20)
+        self.widget['SourceFileButton'] = GE.Button(frame, 'LoadSourceFile', 2, self.select_source_file_path, None, 'control', 10, 60, width=195)
 
         # Input Videos Canvas
         self.target_media_canvas = tk.Canvas(self.layer['InputVideoFrame'], style.canvas_frame_label_3, height=100, width=195)
@@ -902,6 +903,23 @@ class GUI(tk.Tk):
         self.widget['VideoFolderButton'].set(False, request_frame=False)
         self.populate_target_videos()
 
+    def select_source_file_path(self):
+        temp = self.json_dict["source videos"]
+        # self.json_dict["source videos"] = filedialog.askdirectory(title="Select Target Videos Folder", initialdir=temp)
+        #
+        # path = self.create_path_string(self.json_dict["source videos"], 28)
+        # self.input_videos_text.configure(text=path)
+        #
+        # with open("data.json", "w") as outfile:
+        #     json.dump(self.json_dict, outfile)
+        #     outfile.close()
+        #self.widget['VideoFolderButton'].set(False, request_frame=False)
+
+        filenames = [file.name  for file in filedialog.askopenfiles(title="Select Source Files", initialdir=temp)]
+
+        self.widget['SourceFileButton'].set(False, request_frame=False)
+        self.populate_target_videos(filenames)
+
     def select_save_video_path(self):
         temp = self.json_dict["saved videos"]
         self.json_dict["saved videos"] = filedialog.askdirectory(title="Select Save Video Folder", initialdir=temp)
@@ -1206,22 +1224,24 @@ class GUI(tk.Tk):
 
 
 
-    def populate_target_videos(self):
-        # Read only top-level media files from directory
-        directory =  self.json_dict["source videos"]
+    def populate_target_videos(self, filenames = []):
 
-        with_subfolders = self.widget['WithSubfoldersSwitch'].state
+        if len(filenames) == 0:
+            # Read only top-level media files from directory
+            directory =  self.json_dict["source videos"]
 
-        filenames = []
+            with_subfolders = self.widget['WithSubfoldersSwitch'].state
 
-        if not with_subfolders:
-            filenames = [
-                os.path.join(directory, f)
-                for f in os.listdir(directory)
-                if os.path.isfile(os.path.join(directory, f))
-            ]
-        else:
-            filenames = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(directory) for f in filenames]
+            filenames = []
+
+            if not with_subfolders:
+                filenames = [
+                    os.path.join(directory, f)
+                    for f in os.listdir(directory)
+                    if os.path.isfile(os.path.join(directory, f))
+                ]
+            else:
+                filenames = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(directory) for f in filenames]
 
         videos = []
         images = []
