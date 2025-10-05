@@ -184,6 +184,8 @@ DEFAULT_DATA = {
 'OrientSwitchState':                False,
 'RestorerSwitchInfoText':           'FACE RESTORER:\nRestore the swapped image by upscaling.',
 'RestorerSwitchState':              False,
+'WithSubfoldersSwitchInfoText':           'FACE RESTORER:\nRestore the swapped image by upscaling.',
+'WithSubfoldersSwitchState':              False,
 'StrengthSwitchInfoText':           'SWAPPER STRENGTH:\nApply additional swapping iterations to increase the strength of the result, which may increase likeness',
 'StrengthSwitchState':              False,
 'CLIPSwitchInfoText':               'TEXT MASKING:\nUse descriptions to identify objects that will be present in the final swapped image.',

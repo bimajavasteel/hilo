@@ -182,11 +182,24 @@ class GUI(tk.Tk):
 
       # Input Videos
         # Button Frame
-        frame = tk.Frame(self.layer['InputVideoFrame'], style.canvas_frame_label_2, height = 42)
-        frame.grid(row=0, column=0, columnspan = 2, sticky='NEWS', padx=0, pady=0)
+        frame = tk.Frame(self.layer['InputVideoFrame'], style.canvas_frame_label_2, height = 60)
+        frame.grid(row=0, column=0, columnspan = 3, sticky='NEWS', padx=0, pady=0)
 
         # Buttons
         self.widget['VideoFolderButton'] = GE.Button(frame, 'LoadTVideos', 2, self.select_video_path, None, 'control', 10, 1, width=195)
+        self.widget['WithSubfoldersSwitch'] = GE.Switch2(
+            frame,
+            'WithSubfoldersSwitch',
+            'With Subfolders',
+            3,
+            self.switch_nop,
+            'parameter'
+            '',
+            398,
+            20,
+            1,
+            40
+        )
         self.input_videos_text = GE.Text(frame, '', 2, 10, 20, 190, 20)
 
         # Input Videos Canvas
@@ -653,6 +666,7 @@ class GUI(tk.Tk):
 
 
 
+    def switch_nop(self, mode, name, use_markers=False): None
 
 
     # Update the parameters or controls dicts and get a new frame
@@ -1193,9 +1207,21 @@ class GUI(tk.Tk):
 
 
     def populate_target_videos(self):
-        # Recursively read all media files from directory
+        # Read only top-level media files from directory
         directory =  self.json_dict["source videos"]
-        filenames = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(directory) for f in filenames]
+
+        with_subfolders = self.widget['WithSubfoldersSwitch'].state
+
+        filenames = []
+
+        if not with_subfolders:
+            filenames = [
+                os.path.join(directory, f)
+                for f in os.listdir(directory)
+                if os.path.isfile(os.path.join(directory, f))
+            ]
+        else:
+            filenames = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(directory) for f in filenames]
 
         videos = []
         images = []
