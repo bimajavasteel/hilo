@@ -150,6 +150,11 @@ DEFAULT_DATA = {
 'SaveImageButtonState':                     False,
 'SaveImageButtonText':             'Save Image',
 
+'SaveAllImagesButtonDisplay':               'text',
+'SaveAllImagesButtonInfoText':              'SAVE ALL IMAGES:\nProcesses each input image and saves results to your Output Folder.',
+'SaveAllImagesButtonState':                 False,
+'SaveAllImagesButtonText':                  'Save All',
+
 'AutoSwapButtonDisplay':                   'text',   
 'AutoSwapButtonInfoText':                  'AUTOSWAP:\nAutomatcially applies your currently selected Input Face to new images.',
 'AutoSwapButtonState':                     False,

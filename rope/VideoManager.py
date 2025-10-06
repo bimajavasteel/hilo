@@ -1,6 +1,8 @@
 import os
 import cv2
 import tkinter as tk
+
+import numpy
 from PIL import Image, ImageTk
 import threading
 import time
@@ -24,6 +26,19 @@ import inspect #print(inspect.currentframe().f_back.f_code.co_name, 'resize_imag
 device = 'cuda'
 
 lock=threading.Lock()
+
+import logging
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+from numpy import ndarray
 
 class VideoManager():  
     def __init__(self, models ):
@@ -124,6 +139,7 @@ class VideoManager():
 
     def assign_found_faces(self, found_faces):
         self.found_faces = found_faces
+        logger.debug('new ' + str(len(found_faces)) +  ' found faces setted')
 
 
     def load_target_video( self, file ):
@@ -175,6 +191,7 @@ class VideoManager():
         self.frame_q.append(temp)
 
         self.is_image_loaded = True
+        logger.debug('source image ' + file + ' loaded')
 
     
     ## Action queue
@@ -506,6 +523,9 @@ class VideoManager():
 
     # @profile
     def swap_video(self, target_image, frame_number, use_markers):
+
+        logger.debug('run face swapping')
+
         # Grab a local copy of the parameters to prevent threading issues
         parameters = self.parameters.copy()
         control = self.control.copy()
@@ -561,7 +581,11 @@ class VideoManager():
             for fface in ret:
                 for found_face in self.found_faces:
                     # sim between face in video and already found face
-                    sim = self.findCosineDistance(fface[1], found_face["Embedding"])
+                    found_face_embedding: ndarray = found_face["Embedding"]
+                    # logger.debug('Embedding: ' + numpy.array_str(found_face_embedding))
+                    # logger.debug('fface1: ' + numpy.array_str(fface[1]))
+                    sim = self.findCosineDistance(fface[1], found_face_embedding)
+                    logger.debug('sim:' + str(sim))
                     # if the face[i] in the frame matches afound face[j] AND the found face is active (not []) 
                     if sim>=float(parameters["ThresholdSlider"]) and found_face["SourceFaceAssignments"]:
                         s_e = found_face["AssignedEmbedding"]
@@ -605,7 +629,7 @@ class VideoManager():
         #                 img[int(kpoint[1])+i][int(kpoint[0])+j][1] = 255
         #                 img[int(kpoint[1])+i][int(kpoint[0])+j][2] = 255
 
-        
+        logger.debug('complete face swapping')
         return img.astype(np.uint8)
 
     def findCosineDistance(self, vector1, vector2):
@@ -624,6 +648,8 @@ class VideoManager():
 
     # @profile    
     def swap_core(self, img, kps, s_e, parameters, control): # img = RGB
+
+        logger.debug('run swap core')
         # 512 transforms
         dst = self.arcface_dst * 4.0
         dst[:,0] += 32.0
@@ -876,6 +902,7 @@ class VideoManager():
             img = torch.hstack([original_face_512, swap_mask*255])
             img = img.permute(2,0,1)
 
+        logger.debug('completed swap core')
         return img
         
     # @profile    
