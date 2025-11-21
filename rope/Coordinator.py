@@ -171,4 +171,34 @@ def run():
     
     gui.mainloop()
 
+class Coordinator:
+    def run_headless(self, source, target, output, enhancer="none", keep_fps=False, models_dir=None):
+        print("[INFO] Running headless pipeline...")
+
+        # override model directory
+        if models_dir:
+            os.environ["MODELS_DIR"] = models_dir
+
+        # non-GUI pipeline
+        from .Processors.Swapper import Swapper
+        from .Utils.VideoUtils import load_video, save_video
+
+        print("[INFO] Loading target video...")
+        frames, fps = load_video(target)
+
+        print("[INFO] Initializing swapper...")
+        swapper = Swapper(model_dir=models_dir)
+
+        print("[INFO] Swapping faces...")
+        out_frames = swapper.swap_video(
+            frames=frames,
+            source_path=source,
+            enhancer=enhancer,
+        )
+
+        print("[INFO] Saving output...")
+        save_video(out_frames, output, fps if keep_fps else None)
+
+        print("[INFO] Headless complete.")
+
 
